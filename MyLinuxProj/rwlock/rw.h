@@ -6,6 +6,8 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 
 int initState = 0;
 
@@ -22,21 +24,35 @@ union semun {
 
 
 int rwlock_init(rwlock* rw) {
-    int ret = 0;
-    rw->unique = semget(1, 1, 0666|IPC_CREAT);
-    rw->shared = semget(2, 1, 0666|IPC_CREAT);
-    if(rw->unique < 0 && rw->shared < 0) return -1;
-
-    if(initState == 0) {
-        initState = 1;
+    rw->unique = semget(1, 1, 0666 | IPC_CREAT | IPC_EXCL);
+    rw->shared = semget(2, 1, 0666 | IPC_CREAT | IPC_EXCL);
+    if(rw->unique == -1 && rw->shared == -1) {
+        if(errno == EEXIST) {
+            printf("rwlock has exist\n");
+            rw->unique = semget(1, 1, 0666);
+            rw->shared = semget(2, 1, 0666);
+        }
+        else {
+            printf("fatal error in %s, %s, %d, rwlock init fail\n" \
+                , __FILE__ , __func__, __LINE__);
+            exit(0);
+        }
+    }
+    else if(rw->unique > -1 && rw->shared > -1) {
+        printf("rwlock is created\n");
         union semun arg;
         arg.val = 1;
         semctl(rw->unique, 0, SETVAL, arg);
         arg.val = 0;
         semctl(rw->shared, 0, SETVAL, arg);
     }
+    else {
+        printf("fatal error in %s, %s, %d, rwlock init fail\n" \
+                , __FILE__ , __func__, __LINE__);
+        exit(0);
+    }
 
-    else return 0;
+    return 0;
 }
 
 
