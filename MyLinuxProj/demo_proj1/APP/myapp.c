@@ -24,7 +24,7 @@ int initTransRcv(int dataSize_, char** shmbuf_, int* shmid_, int* semid_) {
 	printf("initTransRcv: wait send port init\n");	// 等待发送端初始化
 	sleep(3);
 
-    *shmid_ = shmget(1, dataSize_, 0666|IPC_CREAT);
+    *shmid_ = shmget(1, dataSize_, 0666 | IPC_CREAT);
     if(*shmid_ == -1) {
         printf("initTransRcv: shared memory init fail\n");
         return -2;
@@ -38,7 +38,7 @@ int initTransRcv(int dataSize_, char** shmbuf_, int* shmid_, int* semid_) {
     }
     else printf("initTransRcv: shared memory map success\n");
 
-    *semid_ = semget(1, 1, 0666|IPC_CREAT); 
+    *semid_ = semget(1, 1, 0666 | IPC_CREAT); 
     if(*semid_ == -1) {
         printf("initTransRcv: semaphore init fail\n");
         return -2;

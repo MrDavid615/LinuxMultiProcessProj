@@ -1,11 +1,12 @@
 /**
- * @file dataGet.c
+ * @file dataGet.h
  * @brief A公司提供的程序源码（数据传输框架）
  * @author 庐阳寒月 (lyhyhyl@163.com)
  *         个人主页：
- *          CSDN: https://blog.csdn.net/Mr_Hanc_Tiskor?type=blog
- *          bilibili: https://space.bilibili.com/419816855?spm_id_from=333.1007.0.0
- * @date 2025-04-20
+ *          CSDN:       https://blog.csdn.net/Mr_Hanc_Tiskor?type=blog
+ *          bilibili:   https://space.bilibili.com/419816855?spm_id_from=333.1007.0.0
+ *          GitHub:     https://github.com/MrDavid615
+ * @date 2025-05-01
  */
 
 #include <stdio.h>
@@ -15,15 +16,38 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <string.h>
+#include <signal.h>
 
 #define PACKET_SIZE     (512 * 512 * sizeof(double) + 1)    // 数据包的大小
 
-// 检查设备上电状态，返回0表示正常，在下面实现
-int device_check(void);
+// 信号量定义为全局变量
+int shmid = -1, semid = -1;
+char* shmbuf = NULL;
 
 // 外部函数，将数据存储到_buf指向的空间中，空间动态分配，这里在下面实现
 // 返回值：传输数据的字节数
-int recv_data(char** _buf);
+static int recv_data(char** buf) {
+    // 发送数据
+    *buf = (char*)malloc(PACKET_SIZE);
+    static int i = 0;   
+    *buf[0] = i++;  // 数据帧号
+
+    /*
+    调用底层接口
+    */
+
+    if(*buf == NULL) {
+        return -4;
+    }
+    return PACKET_SIZE;
+}
+
+// 检查设备上电状态，返回0表示正常，在下面实现
+static int device_check(void) {
+    // 检查外设
+    return 0;
+}
+
 
 /*
 功能：数据传输初始化
@@ -102,6 +126,18 @@ int deinitTrans(char* shmbuf_, int shmid_, int semid_) {
 }
 
 /*
+功能：除以异常退出后信号量的资源回收
+参数: sigid，信号标号
+*/
+void exceptionExit(int sigid) {
+    if(sigid == SIGINT) {
+        printf("\nCtrl + C is pressed, sys exit!\n");
+        deinitTrans(shmbuf, shmid, semid);
+    }
+    exit(0);
+}
+
+/*
 功能：数据传输
 参数：
     shmbuf_： 	[in]  共享内存的映射地址
@@ -131,8 +167,6 @@ int getData(void) {
     if(ret != 0) return ret;
 
     /* another fun */
-    int shmid = -1, semid = -1;
-    char* shmbuf = NULL;
     if(initTrans(PACKET_SIZE, &shmbuf, &shmid, &semid) != 0) {
         return -2;
     }
@@ -154,38 +188,3 @@ int getData(void) {
     return deinitTrans(shmbuf, shmid, semid);
 }
 
-int main() {
-    int ret = getData();
-    if(ret < 0) {
-        printf("data :: error: ");
-        if(ret == -1) printf("device is disconnected\n");
-        else if(ret == -2) printf("Trans init error\n");
-        else if(ret == -3) printf("Trans deinit error\n");
-        else if(ret == -4) printf("data recv error\n");
-        else printf("another error\n");
-        return 0;
-    }
-    return 0;
-}
-
-
-int recv_data(char** buf) {
-    // 发送数据
-    *buf = (char*)malloc(PACKET_SIZE);
-    static int i = 0;   
-    *buf[0] = i++;  // 数据帧号
-
-    /*
-    调用底层接口
-    */
-
-    if(*buf == NULL) {
-        return -4;
-    }
-    return PACKET_SIZE;
-}
-
-int device_check(void) {
-    // 检查外设
-    return 0;
-}
